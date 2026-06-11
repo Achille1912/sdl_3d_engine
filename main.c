@@ -3,24 +3,32 @@
 #include <stdint.h>
 #include <math.h>
 
+// This is our struct to represent a point in a 3D world.
 typedef struct p3
 {
     float x, y, z;
 } p3;
 
+// Here we define two arrays of 3D-Points of NUMPOINTS length.
 #define NUMPOINTS 10000
 p3 model[NUMPOINTS];
 p3 rotated[NUMPOINTS];
 
+// In this function we take the SDL Frame Buffer and set the memory at 0.
 void clear(SDL_Surface *surface)
 {
     int height = surface->h;
     int width = surface->w;
     int pitch = surface->pitch; // how many bits per pixel
     uint8_t *fb = (uint8_t *)surface->pixels;
-    memset(fb, 0, pitch * height);
+    memset(fb, 0, pitch * height); // (width * 4) * height
 }
 
+// In this function we set all the cells of the model.
+// In other words: here we set the figure to show up on the FB.
+// * An important thing is that the array adjacity is lost
+// * in the figure. I mean, two adjacent cells in model
+// * maybe could be far away in the 3D figure.
 void create_model()
 {
 #if 1
@@ -62,7 +70,7 @@ void pixel(SDL_Surface *surface, int x, int y, int r, int g, int b)
     fb[y * pitch + x * 4 + 0] = b;
     fb[y * pitch + x * 4 + 1] = g;
     fb[y * pitch + x * 4 + 2] = r;
-    fb[y * pitch + x * 4 + 3] = 1;
+    fb[y * pitch + x * 4 + 3] = 255;
 }
 
 void rotate(float time)
@@ -98,6 +106,7 @@ void draw(SDL_Surface *surface, float time)
         float x = rotated[j].x / zfactor;
         float y = rotated[j].y / zfactor;
         pixel(surface, cx + x, cy + y, 255, 255, 255);
+
         /*
         float alpha = (float)j / 1000;
         int x = cx + sin(alpha) * 50;
