@@ -56,23 +56,39 @@ void create_model()
 #endif
 }
 
+// In this function we have the pointer of the surface, the (x,y) 2-dimensional
+// coord of the pixel and the color (r,g,b encoded).
+// And with this stuff we can set the color at the exact rappresentation's position
+// in the Frame Buffer.
+// ! The SDL_Surface uses the BGR encoding.
 void pixel(SDL_Surface *surface, int x, int y, int r, int g, int b)
 {
     int height = surface->h;
     int width = surface->w;
+    // ======== Security check ==========
     if (x < 0 || x > width)
         return;
     if (y < 0 || y > height)
         return;
+    // ==================================
+
     int pitch = surface->pitch; // how many bits per pixel
     uint8_t *fb = (uint8_t *)surface->pixels;
 
+    /*
+     * The formula that converts the (x,y) window point
+     * in the Frame Buffer array coordinate is:
+     *   j = (y * pitch) + (x * 4) + channel_code
+     * The '4' refers to the 4 channel that we have.
+     */
     fb[y * pitch + x * 4 + 0] = b;
     fb[y * pitch + x * 4 + 1] = g;
     fb[y * pitch + x * 4 + 2] = r;
     fb[y * pitch + x * 4 + 3] = 255;
 }
 
+// This function performs the Rotate Transformation on the model.
+// There is the time parameter too, in order to do some cool stuff.
 void rotate(float time)
 {
     float alpha = 100;
@@ -90,6 +106,15 @@ void rotate(float time)
     }
 }
 
+/* This function, for all the points in the 3D model, calculates
+the convertion from the 3D coordinates to the 2D FB world.
+
+1. We calculate a zfactor, that is a dynamic coefficient that
+    squeeze the x and y values when the z is far away from the viewer
+    and does the opposite when the z value is near the viewer.
+2. Sending the (x,y) coordinates with the z dependence, we perform a traslation
+    to the center in addition.
+*/
 void draw(SDL_Surface *surface, float time)
 {
     int height = surface->h;
@@ -168,7 +193,7 @@ int main(int argc, char *argv[])
         SDL_Delay(16);
     }
 
-    // CLeanup
+    // Cleanup
     SDL_DestroyWindow(window);
     SDL_Quit();
     return 0;
