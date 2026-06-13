@@ -21,6 +21,13 @@ p3 rotated[NUMPOINTS];
 p2 model2d[NUMPOINTS];
 #define ROTATING 1
 
+typedef enum
+{
+    X_AXIS,
+    Y_AXIS,
+    Z_AXIS
+} axis;
+
 // In this function we take the SDL Frame Buffer and set the memory at 0.
 void clear(SDL_Surface *surface)
 {
@@ -119,7 +126,7 @@ void line(SDL_Surface *surface, p3 *pa, p3 *pb, int r, int g, int b)
     float y_increment = dy / steps;
 
     float x = pa->x;
-    float y = pb->y;
+    float y = pa->y;
     for (int i = 0; i < steps; i++)
     {
         pixel(surface, (int)x + cx, (int)y + cy, r, g, b);
@@ -130,27 +137,61 @@ void line(SDL_Surface *surface, p3 *pa, p3 *pb, int r, int g, int b)
 
 // This function performs the Rotate Transformation on the model.
 // There is the time parameter too, in order to do some cool stuff.
-void rotate(float time)
+void rotate(float time, axis ax)
 {
     float alpha = 100;
+    float theta = time / alpha;
     for (int j = 0; j < NUMPOINTS; j++)
     {
-        /*
-         *  Rotation alogn the y axis is:
-         *   x' = x cos(theta) + z sin(theta)
-         *   y' = y
-         *   z' = -x sin(theta) + z cos(theta)
-         */
-        rotated[j].x = model[j].x * cos(time / alpha) + model[j].z * sin(time / alpha);
-        rotated[j].y = model[j].y;
-        rotated[j].z = -model[j].x * sin(time / alpha) + model[j].z * cos(time / alpha);
+        switch (ax)
+        {
+        case X_AXIS:
+            /*
+             *  Rotation alogn the x axis is:
+             *   x' = x
+             *   y' = y cos(theta) - z sin(theta)
+             *   z' = y sin(theta) + z cos(theta)
+             */
+            rotated[j].x = model[j].x;
+            rotated[j].y = model[j].y * cos(theta) - model[j].z * sin(theta);
+            rotated[j].z = model[j].y * sin(theta) + model[j].z * cos(theta);
+            break;
+        case Y_AXIS:
+            /*
+             *  Rotation alogn the y axis is:
+             *   x' = x cos(theta) + z sin(theta)
+             *   y' = y
+             *   z' = -x sin(theta) + z cos(theta)
+             */
+            rotated[j].x = model[j].x * cos(theta) + model[j].z * sin(theta);
+            rotated[j].y = model[j].y;
+            rotated[j].z = -model[j].x * sin(theta) + model[j].z * cos(theta);
+
+            break;
+
+        case Z_AXIS:
+            /*
+             *  Rotation alogn the z axis is:
+             *   x' = x cos(theta) - y sin(theta)
+             *   y' = x sin(theta) +  y cos(theta)
+             *   z' = z
+             */
+            rotated[j].x = model[j].x * cos(theta) - model[j].y * sin(theta);
+            rotated[j].y = model[j].x * sin(theta) + model[j].y * cos(theta);
+            rotated[j].z = model[j].z;
+
+            break;
+        }
     }
 }
 
 void update(float time)
 {
     if (ROTATING == 1)
-        rotate(time);
+    {
+        axis ax = Y_AXIS;
+        rotate(time, ax);
+    }
     return;
 }
 
@@ -185,10 +226,21 @@ void draw(SDL_Surface *surface)
         model2d[j].x = cx + draw_model[j].x / zfactor;
         model2d[j].y = cy + draw_model[j].y / zfactor;
 
-        pixel(surface, model2d[j].x, model2d[j].y, 255, 255, 255);
+        // Normalize z in order to set a proper color
+        // (z + 100) in order to set the minimum at 0
+        // ()/300 in order to map in [0,1] range
+        float t = (draw_model[j].z + 100) / 300;
+        if (t > 1)
+            t = 1;
+        if (t < 0)
+            t = 0;
+        int r = (int)(t * 255);
+        int g = 0;
+        int b = (int)((1 - t) * 255);
+        pixel(surface, model2d[j].x, model2d[j].y, r, g, b);
     }
 
-    line(surface, &draw_model[10], &draw_model[11], 255, 0, 0);
+    // line(surface, &draw_model[10], &draw_model[11], 255, 0, 0);
 }
 int main(int argc, char *argv[])
 {
