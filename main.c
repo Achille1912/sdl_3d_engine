@@ -9,10 +9,17 @@ typedef struct p3
     float x, y, z;
 } p3;
 
+// This is our struct to represent a point in a 2D world.
+typedef struct p2
+{
+    int x, y;
+} p2;
 // Here we define two arrays of 3D-Points of NUMPOINTS length.
 #define NUMPOINTS 10000
 p3 model[NUMPOINTS];
 p3 rotated[NUMPOINTS];
+p2 model2d[NUMPOINTS];
+#define ROTATING 1
 
 // In this function we take the SDL Frame Buffer and set the memory at 0.
 void clear(SDL_Surface *surface)
@@ -87,6 +94,40 @@ void pixel(SDL_Surface *surface, int x, int y, int r, int g, int b)
     fb[y * pitch + x * 4 + 3] = 255;
 }
 
+p3 *pixel_neighbors(p3 *p)
+{
+
+    // TODO: neighbors function
+}
+
+void line(SDL_Surface *surface, p3 *pa, p3 *pb, int r, int g, int b)
+{
+    int height = surface->h;
+    int width = surface->w;
+
+    int cx = width / 2;
+    int cy = height / 2;
+
+    float dx = pb->x - pa->x;
+    float dy = pb->y - pa->y;
+
+    int steps = (abs(dx) > abs(dy)) ? abs(dx) : abs(dy);
+    if (steps == 0)
+        steps = 1;
+
+    float x_increment = dx / steps;
+    float y_increment = dy / steps;
+
+    float x = pa->x;
+    float y = pb->y;
+    for (int i = 0; i < steps; i++)
+    {
+        pixel(surface, (int)x + cx, (int)y + cy, r, g, b);
+        x += x_increment;
+        y += y_increment;
+    }
+}
+
 // This function performs the Rotate Transformation on the model.
 // There is the time parameter too, in order to do some cool stuff.
 void rotate(float time)
@@ -106,6 +147,13 @@ void rotate(float time)
     }
 }
 
+void update(float time)
+{
+    if (ROTATING == 1)
+        rotate(time);
+    return;
+}
+
 /* This function, for all the points in the 3D model, calculates
 the convertion from the 3D coordinates to the 2D FB world.
 
@@ -115,7 +163,7 @@ the convertion from the 3D coordinates to the 2D FB world.
 2. Sending the (x,y) coordinates with the z dependence, we perform a traslation
     to the center in addition.
 */
-void draw(SDL_Surface *surface, float time)
+void draw(SDL_Surface *surface)
 {
     int height = surface->h;
     int width = surface->w;
@@ -123,24 +171,25 @@ void draw(SDL_Surface *surface, float time)
     int cx = width / 2;
     int cy = height / 2;
 
-    rotate(time);
+    p3 *draw_model;
+    if (ROTATING)
+        draw_model = rotated;
+    else
+        draw_model = model;
+
     clear(surface);
+
     for (int j = 0; j < NUMPOINTS; j++)
     {
-        float zfactor = 1 + (rotated[j].z / 300);
-        float x = rotated[j].x / zfactor;
-        float y = rotated[j].y / zfactor;
-        pixel(surface, cx + x, cy + y, 255, 255, 255);
+        float zfactor = 1 + (draw_model[j].z / 300);
+        model2d[j].x = cx + draw_model[j].x / zfactor;
+        model2d[j].y = cy + draw_model[j].y / zfactor;
 
-        /*
-        float alpha = (float)j / 1000;
-        int x = cx + sin(alpha) * 50;
-        int y = cy + cos(alpha) * 50;
-        pixel(surface, x, y, 255, 255, 255);
-    */
+        pixel(surface, model2d[j].x, model2d[j].y, 255, 255, 255);
     }
-}
 
+    line(surface, &draw_model[10], &draw_model[11], 255, 0, 0);
+}
 int main(int argc, char *argv[])
 {
     (void)argc;
@@ -186,8 +235,8 @@ int main(int argc, char *argv[])
                 running = 0;
             }
         }
-
-        draw(surface, time);
+        update(time);
+        draw(surface);
         SDL_UpdateWindowSurface(window);
         time = time + 1;
         SDL_Delay(16);
