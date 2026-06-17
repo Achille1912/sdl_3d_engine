@@ -2,7 +2,6 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <math.h>
-
 // This is our struct to represent a point in a 3D world.
 typedef struct p3
 {
@@ -20,6 +19,7 @@ p3 model[NUMPOINTS];
 p3 rotated[NUMPOINTS];
 p2 model2d[NUMPOINTS];
 #define ROTATING 1
+#define SHAPE 3 // POINTS_CLOUD: 1, SIN_COS: 2, SPHERE: 3
 
 typedef enum
 {
@@ -45,29 +45,63 @@ void clear(SDL_Surface *surface)
 // * maybe could be far away in the 3D figure.
 void create_model()
 {
-#if 1
-    for (int i = 0; i <= NUMPOINTS; i++)
+    switch (SHAPE)
     {
-        model[i].x = -100 + rand() % 200;
-        model[i].y = -100 + rand() % 200;
-        model[i].z = -100 + rand() % 200;
-    }
-#else
-    int j = 0;
-    for (float x = -50; x < 50; x++)
-    {
-        for (float z = -50; z <= 50; z++)
+    case 1:
+        for (int i = 0; i <= NUMPOINTS; i++)
         {
-            float y = 10 + (sin(x / 100 * 3.14 * 5) * 5) + (cos(z / 100 * 3.14 * 5) * 5);
-            model[j].x = x * 4;
-            model[j].y = y * 4;
-            model[j].z = z * 4;
-            j++;
-            if (j >= NUMPOINTS)
-                return;
+            model[i].x = -100 + rand() % 200;
+            model[i].y = -100 + rand() % 200;
+            model[i].z = -100 + rand() % 200;
         }
+        break;
+    case 2:
+    {
+        int j = 0;
+        for (float x = -50; x < 50; x++)
+        {
+            for (float z = -50; z <= 50; z++)
+            {
+                float y = 10 + (sin(x / 100 * 3.14 * 5) * 5) + (cos(z / 100 * 3.14 * 5) * 5);
+                model[j].x = x * 4;
+                model[j].y = y * 4;
+                model[j].z = z * 4;
+                j++;
+                if (j >= NUMPOINTS)
+                    return;
+            }
+        }
+        break;
     }
-#endif
+        //* SPHERE
+        //* x= r*sin(phi)*cos(theta),
+        //* y = r*cos(phi),
+        //* z = r*sin(phi)*sin(theta)
+    case 3:
+    {
+        // In this figure, we calculate the sqrt of NUMPOINTS in order to
+        // equally split the total points in lat and long
+        int j = 0;
+        int steps = (int)sqrt(NUMPOINTS);
+        // Mapping the indexes i and k into angular indexes:
+        // phi = 2pi * (k/ steps) where k in [0,steps-1]
+        for (int i = 0; i < steps; i++)
+        {
+            float theta = 3.14 * i / steps; // 0 a π
+            for (int k = 0; k < steps; k++)
+            {
+                float phi = 2 * 3.14 * k / steps; // 0 a 2π
+                model[j].x = 150 * sin(theta) * cos(phi);
+                model[j].y = 150 * cos(theta);
+                model[j].z = 150 * sin(theta) * sin(phi);
+                j++;
+                if (j >= NUMPOINTS)
+                    return;
+            }
+        }
+        break;
+    }
+    }
 }
 
 // In this function we have the pointer of the surface, the (x,y) 2-dimensional
@@ -185,11 +219,10 @@ void rotate(float time, axis ax)
     }
 }
 
-void update(float time)
+void update(float time, axis ax)
 {
     if (ROTATING == 1)
     {
-        axis ax = Y_AXIS;
         rotate(time, ax);
     }
     return;
@@ -239,8 +272,6 @@ void draw(SDL_Surface *surface)
         int b = (int)((1 - t) * 255);
         pixel(surface, model2d[j].x, model2d[j].y, r, g, b);
     }
-
-    // line(surface, &draw_model[10], &draw_model[11], 255, 0, 0);
 }
 int main(int argc, char *argv[])
 {
@@ -276,6 +307,7 @@ int main(int argc, char *argv[])
     create_model();
     int running = 1;
     float time = 0;
+    axis ax = X_AXIS;
     while (running)
     {
 
@@ -286,8 +318,23 @@ int main(int argc, char *argv[])
             {
                 running = 0;
             }
+            if (event.type == SDL_KEYDOWN)
+            {
+                switch (event.key.keysym.sym)
+                {
+                case SDLK_x:
+                    ax = X_AXIS;
+                    break;
+                case SDLK_y:
+                    ax = Y_AXIS;
+                    break;
+                case SDLK_z:
+                    ax = Z_AXIS;
+                    break;
+                }
+            }
         }
-        update(time);
+        update(time, ax);
         draw(surface);
         SDL_UpdateWindowSurface(window);
         time = time + 1;
